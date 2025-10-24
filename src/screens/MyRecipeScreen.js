@@ -19,22 +19,30 @@ export default function MyRecipeScreen() {
   const [loading, setLoading] = useState(true);
 
   // Fetch recipes from AsyncStorage
-  useEffect(() => {
-    const fetchRecipes = async () => {
-      try {
-        const storedRecipes = await AsyncStorage.getItem("myRecipes");
-        if (storedRecipes) {
-          setRecipes(JSON.parse(storedRecipes));
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+const fetchRecipes = async () => {
+  try {
+    const storedRecipes = await AsyncStorage.getItem("myRecipes");
+    if (storedRecipes) {
+      setRecipes(JSON.parse(storedRecipes));
+    }
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
+useEffect(() => {
+  fetchRecipes();
+}, []);
+
+useEffect(() => {
+  const unsubscribe = navigation.addListener("focus", () => {
     fetchRecipes();
-  }, []);
+  });
+
+  return unsubscribe;
+}, [navigation]);
 
   // Add new recipe
 const handleAddRecipe = () => {
@@ -49,26 +57,27 @@ const handleAddRecipe = () => {
   };
 
   // Delete recipe
-  const deleteRecipe = (index) => {
-    Alert.alert(
-      "Delete Recipe",
-      "Are you sure you want to delete this recipe?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const newRecipes = [...recipes];
-            newRecipes.splice(index, 1);
-            setRecipes(newRecipes);
-            await AsyncStorage.setItem("myRecipes", JSON.stringify(newRecipes));
-          },
-        },
-      ]
-    );
-  };
+const confirmDeleteRecipe = async (index) => {
+  const newRecipes = [...recipes];
+  newRecipes.splice(index, 1);
+  setRecipes(newRecipes);
+  await AsyncStorage.setItem("myRecipes", JSON.stringify(newRecipes));
+};
 
+const deleteRecipe = (index) => {
+  Alert.alert(
+    "Delete Recipe",
+    "Are you sure you want to delete this recipe?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => confirmDeleteRecipe(index),
+      },
+    ]
+  );
+};
   // Edit recipe
   const editRecipe = (recipe, index) => {
     navigation.navigate("RecipesFormScreen", { recipe, index, refresh: fetchRecipes });
