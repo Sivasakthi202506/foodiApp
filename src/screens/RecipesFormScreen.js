@@ -1,132 +1,164 @@
-import { View,Text,TextInput,TouchableOpacity,Image,StyleSheet,} from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {widthPercentageToDP as wp,heightPercentageToDP as hp,} from "react-native-responsive-screen";
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-native-responsive-screen";
 
 export default function RecipesFormScreen({ route, navigation }) {
   const { recipeToEdit, recipeIndex, onrecipeEdited } = route.params || {};
-  const [title, setTitle] = useState(recipeToEdit ? recipeToEdit.title : "");
-  const [image, setImage] = useState(recipeToEdit ? recipeToEdit.image : "");
-  const [description, setDescription] = useState(
-    recipeToEdit ? recipeToEdit.description : ""
+
+  // --- States ---
+  const [title, setTitle] = useState(recipeToEdit?.title || "");
+  const [image, setImage] = useState(recipeToEdit?.image || "");
+  const [description, setDescription] = useState(recipeToEdit?.description || "");
+  const [instructions, setInstructions] = useState(recipeToEdit?.instructions || "");
+
+  const [ingredients, setIngredients] = useState(
+    recipeToEdit?.ingredients?.length > 0
+      ? recipeToEdit.ingredients
+      : [{ name: "", measure: "" }]
   );
 
-const saverecipe = async () => {
-  try {
-    // Get existing recipes from AsyncStorage
-    const storedRecipes = await AsyncStorage.getItem("myRecipes");
-    const recipesArray = storedRecipes ? JSON.parse(storedRecipes) : [];
+  // --- Handlers ---
+  const updateIngredient = (index, key, value) => {
+    const newIngredients = [...ingredients];
+    newIngredients[index][key] = value;
+    setIngredients(newIngredients);
+  };
 
-    if (recipeToEdit !== undefined && recipeIndex !== undefined) {
-      // Editing an existing recipe
-      recipesArray[recipeIndex] = {
-        ...recipesArray[recipeIndex],
-        title,
-        image,
-        description,
-      };
+  const addIngredient = () => {
+    setIngredients([...ingredients, { name: "", measure: "" }]);
+  };
 
-      // Optional: call callback for editing
-      if (onrecipeEdited) {
-        onrecipeEdited();
-      }
-    } else {
-      // Adding a new recipe
+  const removeIngredient = (index) => {
+    const newIngredients = ingredients.filter((_, i) => i !== index);
+    setIngredients(newIngredients);
+  };
+
+  const saveRecipe = async () => {
+    try {
+      const storedRecipes = await AsyncStorage.getItem("myRecipes");
+      const recipesArray = storedRecipes ? JSON.parse(storedRecipes) : [];
+
       const newRecipe = {
-        id: Date.now(), // unique ID
         title,
         image,
         description,
+        instructions,
+        ingredients,
+        id: recipeToEdit?.id || Date.now(),
       };
-      recipesArray.push(newRecipe);
+
+      if (recipeToEdit && recipeIndex !== undefined) {
+        // Editing existing
+        recipesArray[recipeIndex] = newRecipe;
+        if (onrecipeEdited) onrecipeEdited();
+      } else {
+        // Adding new
+        recipesArray.push(newRecipe);
+      }
+
+      await AsyncStorage.setItem("myRecipes", JSON.stringify(recipesArray));
+
+      // Refresh previous screen if callback provided
+      if (route.params?.refresh) route.params.refresh();
+
+      navigation.goBack();
+    } catch (error) {
+      console.log("Error saving recipe:", error);
     }
-
-    // Save updated recipes array
-    await AsyncStorage.setItem("myRecipes", JSON.stringify(recipesArray));
-
-    // Call refresh callback from previous screen if passed
-    if (route.params?.refresh) {
-      route.params.refresh();
-    }
-
-    // Go back to previous screen
-    navigation.goBack();
-  } catch (error) {
-    console.log("Error saving recipe:", error);
-  }
-};
-
+  };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: hp(5) }}>
       <TextInput
         placeholder="Title"
         value={title}
         onChangeText={setTitle}
         style={styles.input}
       />
+
       <TextInput
         placeholder="Image URL"
         value={image}
         onChangeText={setImage}
         style={styles.input}
       />
+
       {image ? (
         <Image source={{ uri: image }} style={styles.image} />
       ) : (
         <Text style={styles.imagePlaceholder}>Upload Image URL</Text>
       )}
+
       <TextInput
         placeholder="Description"
         value={description}
         onChangeText={setDescription}
-        multiline={true}
+        multiline
         numberOfLines={4}
-        style={[styles.input, { height: hp(20), textAlignVertical: "top" }]}
+        style={[styles.input, { height: hp(12), textAlignVertical: "top" }]}
       />
-      <TouchableOpacity onPress={saverecipe} style={styles.saveButton}>
-        <Text style={styles.saveButtonText}>Save recipe</Text>
+
+      <TextInput
+        placeholder="Instructions"
+        value={instructions}
+        onChangeText={setInstructions}
+        multiline
+        numberOfLines={6}
+        style={[styles.input, { height: hp(14), textAlignVertical: "top" }]}
+      />
+
+      <Text style={styles.sectionTitle}>Ingredients</Text>
+      {ingredients.map((ing, index) => (
+        <View key={index} style={styles.ingredientRow}>
+          <TextInput
+            placeholder="Name"
+            value={ing.name}
+            onChangeText={(val) => updateIngredient(index, "name", val)}
+            style={[styles.input, { flex: 2, marginRight: wp(2) }]}
+          />
+          <TextInput
+            placeholder="Measure"
+            value={ing.measure}
+            onChangeText={(val) => updateIngredient(index, "measure", val)}
+            style={[styles.input, { flex: 1 }]}
+          />
+          {ingredients.length > 1 && (
+            <TouchableOpacity onPress={() => removeIngredient(index)}>
+              <Text style={styles.removeBtn}>X</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+      <TouchableOpacity onPress={addIngredient} style={styles.addIngredientBtn}>
+        <Text style={styles.addIngredientText}>+ Add Ingredient</Text>
       </TouchableOpacity>
-    </View>
+
+      <TouchableOpacity onPress={saveRecipe} style={styles.saveButton}>
+        <Text style={styles.saveButtonText}>Save Recipe</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: wp(4),
-  },
-  input: {
-    marginTop: hp(4),
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: wp(.5),
-    marginVertical: hp(1),
-  },
-  image: {
-    width: 300,
-    height:200,
-    margin: wp(2),
-  },
-  imagePlaceholder: {
-    height: hp(20),
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: hp(1),
-    borderWidth: 1,
-    borderColor: "#ddd",
-    textAlign: "center",
-    padding: wp(2),
-  },
-  saveButton: {
-    backgroundColor: "#4F75FF",
-    padding: wp(.5),
-    alignItems: "center",
-    borderRadius: 5,
-    marginTop: hp(2),
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  container: { flex: 1, padding: wp(4), backgroundColor: "#fff" },
+  input: { borderWidth: 1, borderColor: "#ddd", padding: wp(2), marginVertical: hp(1), borderRadius: 5 },
+  image: { width: "100%", height: hp(25), marginVertical: hp(1), borderRadius: 8 },
+  imagePlaceholder: { height: hp(25), borderWidth: 1, borderColor: "#ddd", textAlign: "center", textAlignVertical: "center", marginVertical: hp(1) },
+  sectionTitle: { fontSize: hp(2.5), fontWeight: "bold", marginTop: hp(2) },
+  ingredientRow: { flexDirection: "row", alignItems: "center", marginBottom: hp(1) },
+  removeBtn: { color: "red", fontWeight: "bold", fontSize: hp(2.2), marginLeft: wp(1) },
+  addIngredientBtn: { backgroundColor: "#4F75FF", padding: wp(2), borderRadius: 5, marginVertical: hp(1), alignItems: "center" },
+  addIngredientText: { color: "#fff", fontWeight: "bold" },
+  saveButton: { backgroundColor: "#10B981", padding: wp(3), borderRadius: 5, marginTop: hp(2), alignItems: "center" },
+  saveButtonText: { color: "#fff", fontWeight: "bold", fontSize: hp(2) },
 });

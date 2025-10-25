@@ -16,11 +16,14 @@ import {
 
 export default function FavoriteScreen() {
   const navigation = useNavigation();
+
+  // Corrected key to match the slice
   const favoriteRecipesList = useSelector(
-    (state) => state.favorites.favoriterecipes
+    (state) => state.favorites.favoriteRecipes
   );
 
   const handleRecipeClick = (recipe) => {
+    // Pass the full recipe object
     navigation.navigate("RecipeDetail", recipe);
   };
 
@@ -30,14 +33,17 @@ export default function FavoriteScreen() {
       onPress={() => handleRecipeClick(item)}
       testID="favoriteRecipeCard"
     >
-      <Image
-        source={{ uri: item.recipeImage }}
-        style={styles.recipeImage}
-      />
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.recipeImage} />
+      ) : (
+        <View style={[styles.recipeImage, { justifyContent: "center", alignItems: "center" }]}>
+          <Text>No Image</Text>
+        </View>
+      )}
       <Text style={styles.recipeTitle}>
-        {item.recipeName.length > 20
-          ? item.recipeName.substring(0, 20) + "..."
-          : item.recipeName}
+        {item.title.length > 20
+          ? item.title.substring(0, 20) + "..."
+          : item.title}
       </Text>
     </TouchableOpacity>
   );
@@ -70,7 +76,7 @@ export default function FavoriteScreen() {
       <FlatList
         data={favoriteRecipesList}
         contentContainerStyle={styles.listContainer}
-        keyExtractor={(item) => item.idFood.toString()}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderFavoriteItem}
         numColumns={2} // optional, for grid layout
         showsVerticalScrollIndicator={false}
