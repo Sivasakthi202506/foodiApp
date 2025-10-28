@@ -22,6 +22,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fe468837-6f59-45cc-8207-62ac2eddd8be"
+      }
+    },
+    "owner": "sivasakthitms",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fe468837-6f59-45cc-8207-62ac2eddd8be"
     }
   }
 }
